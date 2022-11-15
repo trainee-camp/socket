@@ -23,6 +23,7 @@
     "noFallthroughCasesInSwitch": true /* Report errors for fallthrough cases in switch statement. */,
     "esModuleInterop": true /* Enables emit interoperability between CommonJS and ES Modules via creation of namespace objects for all imports. Implies 'allowSyntheticDefaultImports'. */,
     "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
     "allowJs": true, /* Include JS files to the build folder */
     "checkJs": false, /* Do not type check JS files */
     "types": ["node"],
