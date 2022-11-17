@@ -21,7 +21,10 @@ export class ChatService {
     }
     getUsers = async function (chat: string) {
         const found = await chatRepo.findOneBy({id: chat})
-        return [found?.user1, found?.user2]
+        if (!found) {
+            return [];
+        }
+        return [found.user1, found.user2]
     }
     //gets a set slice of messages from the whole chat history
     getSomeMessages = async function () {
