@@ -1,8 +1,13 @@
 import {Request, Response} from "express";
 import {createServer} from "http";
 import {io} from "socket.io-client";
+import * as bodyParser from 'body-parser';
+import multer from 'multer';
+import {randomUUID} from "crypto";
 
-const app = require('express')()
+const express = require('express');
+
+const app = express()
 const httpServer = createServer(app)
 const socket = io("ws://localhost:3000", {autoConnect: false, reconnection: true})
 
@@ -16,12 +21,14 @@ socket.on("accept chat", (arg) => {
 })
 //Get a message from a chatroom
 socket.on("message", (msg) => {
-    console.log("new message!",msg)
+    console.log("new message!", msg)
     messageStore.push(msg)
 })
 
-const messageStore : any[] = []
-
+const messageStore: any[] = []
+const upload = multer({dest: '/uploads'})
+app.use(bodyParser.urlencoded({extended: false}))
+app.use(express.json())
 //Routing for the app
 app.get('/chat', (_req: Request, res: Response) => {
     res.status(200).json(messageStore)
@@ -33,16 +40,24 @@ app.get('/chat/:with', async (req: Request, res: Response) => {
     res.send("Sent chat invite")
 })
 
-app.get("/send/:to", (req: Request, res: Response) => {
+app.post("/send/:to", upload.array('img'), async (req: Request, res: Response) => {
     //assemble message data
-    const message = {
+    const message = req.body.formData || {
         sender: process.env.NAME,
         text: "ajsgdfkjshdfjka",
-        setAt: Date()
+        setAt: Date(),
+        img: []
     }
     const receiver = req.params.to
+    //upload files
+    if (req.files) {
+        for (const file of <File[]><unknown>req.files) {
+            const nufile = {...file, name: randomUUID()}
+            socket.emit("upload", nufile)
+        }
+    }
     //send message
-    socket.emit("message", receiver, message)
+    socket.emit("message", receiver, {...message})
     //
     const response = "Sent message to " + receiver + " from " + message.sender
     console.log(response)

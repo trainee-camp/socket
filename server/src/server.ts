@@ -4,17 +4,19 @@ import cluster from "cluster";
 import {setupMaster, setupWorker} from "@socket.io/sticky";
 import {setupPrimary} from "@socket.io/cluster-adapter";
 import {Server} from "socket.io";
-import {MessageService} from "./services/message";
-import {ChatService} from "./services/chat";
 import {connect} from './session.store'
+import {ChatService} from "./services/chat";
+import {MessageService} from "./services/message";
 
+const chatService = new ChatService()
+const msgService = new MessageService()
 require('dotenv').config()
 const app = require('express')()
 //Connect to DB
 import dbConnection from "./db.connection";
-//services instantiation
-const chatService = new ChatService()
-const msgService = new MessageService()
+import * as fs from "fs";
+import path from "path";
+
 //Session configuration
 const client = connect({url: process.env.REDIS_URL})
 //Clusters
@@ -44,7 +46,6 @@ if (cluster.isMaster) {
     (async function worker_start() {
         console.log(`Worker ${process.pid} started on ${process.env.PORT}`);
         const httpServer = http.createServer(app);
-        //socket.io
         const io = new Server(httpServer);
         // setup connection with the primary process
         setupWorker(io);
@@ -54,16 +55,15 @@ if (cluster.isMaster) {
         const subClient = client.duplicate()
         await Promise.all([client.connect(), subClient.connect()])
         io.adapter(createAdapter(client, subClient))
-        // client.connect()
         const session = client
-        //Socket connections
+        //Handle socket connections
         io.on("connection", async (socket) => {
-
+            console.log("connected ", socket.id)
             const sessionKey = socket.handshake.auth.username
             await session.set(sessionKey, socket.id)
 
             //Client requesting to create a chat room with another client
-            socket.on("send chat", async (receiver, sender) => {
+            socket.on("send chat", async (receiver: any, sender: any) => {
                 const chatId = await chatService.create(receiver, sender)
                 if (!chatId) {
                     return;
@@ -75,27 +75,38 @@ if (cluster.isMaster) {
                 }
             })
             //Client sending message to a room
-            socket.on("message", async (room, message) => {
+            socket.on("message", async (room: any, message: any) => {
                 //Log message to db
                 await msgService.post(message, room)
+                //Wait for file upload, save them to disk
                 //Add users to the room if not already in (possible to send message to each sockets default room though, no real need to create one, but whatever)
                 if (!socket.rooms.has(room)) {
                     const users = await chatService.getUsers(room)
-                    for (const user of users) {
-                        const socket_id = await session.get(user)
-                        if (socket.handshake.auth.username === user) {
-                            io.in(String(socket_id)).local.socketsJoin(room)
-                        } else {
-                            io.in(String(socket_id)).socketsJoin(room)
+                    const sockets = await Promise.all(users.map(user => {
+                        return {
+                            user: user, id: session.get(user)
                         }
-                    }
+                    }))
+                    sockets.forEach(sock => {
+                        if (socket.handshake.auth.username === sock.user) {
+                            io.in(String(sock.id)).local.socketsJoin(room)
+                        } else {
+                            io.in(String(sock.id)).socketsJoin(room)
+                        }
+                    })
                 }
                 //Retranslate message to the chat room
+
                 io.to(room).emit("message", message)
             })
-        })
-    }())
 
+            socket.on("upload", async (file) => {
+                console.log(file instanceof File)
+                await fs.writeFile(path.join(String(process.env.PATH_TO_DATA), file.name, file.originalname.split('.')[1]), file.arrayBuffer(), () => {
+                })
+            })
+        })
+    })()
 }
 
 

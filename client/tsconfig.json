@@ -30,8 +30,7 @@
     "checkJs": false, /* Do not type check JS files */
     "types": ["node"],
     "lib": [
-      "es2016",
-      "dom"
+      "es5", "es6", "dom", "dom.iterable"
     ]
   },
   "include": ["src/**/*"],

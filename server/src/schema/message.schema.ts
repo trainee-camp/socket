@@ -18,7 +18,6 @@ export class MessageSchema {
     @Column("varchar",{array:true , nullable: true})
     smallImg: string[]
 
-
     @Column("varchar",{array:true, nullable: true})
     img: string[]
 
