@@ -28,7 +28,8 @@ export async function worker_start(expessapp: any, redisclient: any, dbConnectio
         await session.set(sessionKey, socket.id)
 
         //Client requesting to create a chat room with another client
-        socket.on("send chat", async (receiver: any, sender: any) => {
+        socket.on("send chat", async (receiver: any) => {
+            const sender = sessionKey
             const chatId = await chatService.create(receiver, sender)
             if (!chatId) {
                 return;
@@ -37,6 +38,19 @@ export async function worker_start(expessapp: any, redisclient: any, dbConnectio
             const receiver_room = await session.get(receiver)
             if (receiver_room) {
                 io.to(receiver_room).emit("accept chat", chatId)
+            }
+        })
+        //Get chat and a first bunch of messages
+        socket.on("get chat", async (chat, opts) => {
+            const response = await msgService.getSomeForChat(chat, opts)
+            socket.emit("send chat", response)
+        })
+        //Get all chats for a user
+        socket.on("get chats", async () => {
+            const user = sessionKey
+            const chats = await chatService.getAll(user)
+            if (chats.length) {
+                socket.emit("send chats", chats)
             }
         })
         //Client sending message to a room
@@ -64,7 +78,7 @@ export async function worker_start(expessapp: any, redisclient: any, dbConnectio
 
             io.to(room).emit("message", message)
         })
-
+        //Client uploads images to server
         socket.on("upload", async (file) => {
             await fs.writeFile(path.join(String(process.env.PATH_TO_DATA), file.originalname), file.buffer)
         })

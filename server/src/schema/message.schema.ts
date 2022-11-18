@@ -6,7 +6,7 @@ export class MessageSchema {
     @PrimaryGeneratedColumn("uuid")
     id: string
 
-    @Column()
+    @Column("date")
     setAt: string
 
     @Column()

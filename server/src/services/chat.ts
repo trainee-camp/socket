@@ -1,6 +1,5 @@
 import {ChatSchema} from "../schema/chat.schema";
 import dbConnection from "../db.connection";
-
 const chatRepo = dbConnection.getRepository(ChatSchema)
 
 export class ChatService {
@@ -26,8 +25,12 @@ export class ChatService {
         }
         return [found.user1, found.user2]
     }
-    //gets a set slice of messages from the whole chat history
-    getSomeMessages = async function () {
-
+    getAll = async function (user: string) {
+        const found: ChatSchema[] = await chatRepo.findBy([
+            {user1: user},
+            {user2: user}
+        ])
+        return found;
     }
+
 }

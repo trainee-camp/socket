@@ -12,7 +12,9 @@ export class ChatSchema {
     @Column({nullable:false})
     user2: string
 
-    @OneToMany(() => MessageSchema, (message) => message.chat, {})
+    @OneToMany(() => MessageSchema, (message) => message.chat, {
+        cascade:true
+    })
     messages: MessageSchema[]
 }
 

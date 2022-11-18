@@ -1,10 +1,11 @@
-import {Request, Response} from "express";
 import {createServer} from "http";
 import {io} from "socket.io-client";
 import * as bodyParser from 'body-parser';
 import multer from 'multer';
-import {randomUUID} from "crypto";
-import {connect} from "./messageStore";
+import {createClient} from "redis";
+import {MessageController} from "./controllers/message.controller";
+import {ChatController} from "./controllers/chat.controller";
+
 
 require('dotenv').config()
 const express = require('express');
@@ -12,7 +13,8 @@ const express = require('express');
 const app = express()
 const httpServer = createServer(app)
 const socket = io("ws://localhost:3000", {autoConnect: false, reconnection: true})
-
+const msgController = new MessageController(socket)
+const chatController = new ChatController(socket)
 //Socket connections
 socket.on("connect", () => {
     console.log("Connected to server")
@@ -27,7 +29,7 @@ socket.on("message", (msg) => {
     messageStore.set(msg.id, msg)
 })
 
-const messageStore = connect(process.env.REDIS_URL)
+const messageStore = createClient({url: process.env.REDIS_URL})
 const upload = multer({
     storage: multer.memoryStorage()
 })
@@ -35,34 +37,10 @@ const upload = multer({
 app.use(bodyParser.urlencoded({extended: false}))
 app.use(express.json())
 //Routing for the app
-app.get('/chat', (_req: Request, res: Response) => {
-    res.status(200).json(messageStore)
-})
-
-app.get('/chat/:with', async (req: Request, res: Response) => {
-    const target = req.params.with
-    socket.emit("send chat", target, process.env.NAME)
-    res.send("Sent chat invite")
-})
-
-app.post("/send/:to", upload.array('img', 10), async (req: Request, res: Response) => {
-    //assemble message data
-    const message = {...req.body, img: []}
-    const receiver = req.params.to
-    //upload files
-    if (req.files) {
-        (req.files as Array<Express.Multer.File>).forEach(file => {
-            file.originalname = file.originalname.replace(/.*\./, '.' + randomUUID())
-            message.img.push(file.originalname)
-            socket.emit("upload", file)
-        })
-    }
-    //send message
-    socket.emit("message", receiver, {...message})
-    //
-    const response = "Sent message to " + receiver + " from " + message.sender
-    res.send(response)
-})
+app.post('/:chat', chatController.getPrerendered)
+app.post('/chat/:with', chatController.post)
+app.get('/chats', chatController.getAll)
+app.post("/send/:to", upload.array('img', 10), msgController.postMsg)
 
 //Server startup
 const port = process.env.PORT
