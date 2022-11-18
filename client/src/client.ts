@@ -4,7 +4,9 @@ import {io} from "socket.io-client";
 import * as bodyParser from 'body-parser';
 import multer from 'multer';
 import {randomUUID} from "crypto";
+import {connect} from "./messageStore";
 
+require('dotenv').config()
 const express = require('express');
 
 const app = express()
@@ -22,11 +24,14 @@ socket.on("accept chat", (arg) => {
 //Get a message from a chatroom
 socket.on("message", (msg) => {
     console.log("new message!", msg)
-    messageStore.push(msg)
+    messageStore.set(msg.id, msg)
 })
 
-const messageStore: any[] = []
-const upload = multer({dest: '/uploads'})
+const messageStore = connect(process.env.REDIS_URL)
+const upload = multer({
+    storage: multer.memoryStorage()
+})
+
 app.use(bodyParser.urlencoded({extended: false}))
 app.use(express.json())
 //Routing for the app
@@ -40,27 +45,22 @@ app.get('/chat/:with', async (req: Request, res: Response) => {
     res.send("Sent chat invite")
 })
 
-app.post("/send/:to", upload.array('img'), async (req: Request, res: Response) => {
+app.post("/send/:to", upload.array('img', 10), async (req: Request, res: Response) => {
     //assemble message data
-    const message = req.body.formData || {
-        sender: process.env.NAME,
-        text: "ajsgdfkjshdfjka",
-        setAt: Date(),
-        img: []
-    }
+    const message = {...req.body, img: []}
     const receiver = req.params.to
     //upload files
     if (req.files) {
-        for (const file of <File[]><unknown>req.files) {
-            const nufile = {...file, name: randomUUID()}
-            socket.emit("upload", nufile)
-        }
+        (req.files as Array<Express.Multer.File>).forEach(file => {
+            file.originalname = file.originalname.replace(/.*\./, '.' + randomUUID())
+            message.img.push(file.originalname)
+            socket.emit("upload", file)
+        })
     }
     //send message
     socket.emit("message", receiver, {...message})
     //
     const response = "Sent message to " + receiver + " from " + message.sender
-    console.log(response)
     res.send(response)
 })
 
