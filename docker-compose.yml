@@ -1,0 +1,25 @@
+version: '3.3'
+services:
+  server:
+    build: server/.
+    environment:
+      -  PORT=3000
+    ports:
+      - "3000:3000"
+  client:
+    build: client/.
+    environment:
+      - PORT=3001
+      - WS_SERVER_PORT="ws://localhost:3000/"
+      - HTTP_SERVER_PORT="http://localhost:3000/"
+    ports:
+      - "3001:3001"
+  pysql:
+    image: "postgres"
+    environment:
+      - POSTGRES_USERNAME="postgres"
+      - POSTGRES_PASSWORD="12072004"
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"

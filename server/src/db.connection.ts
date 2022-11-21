@@ -19,6 +19,6 @@ export default new DataSource({
     port: Number(PSQL_PORT),
     password: PSQL_PASSWORD,
     entities: [ChatSchema, MessageSchema],
-    synchronize: true,
+    // synchronize: true,
     // dropSchema: true
 })

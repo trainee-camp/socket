@@ -1,11 +1,11 @@
 {
   "name": "socket-server",
   "version": "1.0.0",
-  "main": "build/index.js",
+  "main": "build/server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "rm -rf build && tsc",
-    "start": "npm run build && node -r source-map-support/register build"
+    "build": "tsc",
+    "start": "npm run build && node build/server.js"
   },
   "repository": {
     "type": "git",

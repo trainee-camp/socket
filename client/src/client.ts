@@ -1,20 +1,16 @@
 import {createServer} from "http";
 import {io} from "socket.io-client";
 import * as bodyParser from 'body-parser';
-import multer from 'multer';
 import {createClient} from "redis";
-import {MessageController} from "./controllers/message.controller";
-import {ChatController} from "./controllers/chat.controller";
-
+import {buildRoutes} from "./router";
 
 require('dotenv').config()
 const express = require('express');
 
 const app = express()
 const httpServer = createServer(app)
-const socket = io("ws://localhost:3000", {autoConnect: false, reconnection: true})
-const msgController = new MessageController(socket)
-const chatController = new ChatController(socket)
+const socket = io(String(process.env.WS_SERVER_PORT), {autoConnect: false, reconnection: true})
+
 //Socket connections
 socket.on("connect", () => {
     console.log("Connected to server")
@@ -30,17 +26,11 @@ socket.on("message", (msg) => {
 })
 
 const messageStore = createClient({url: process.env.REDIS_URL})
-const upload = multer({
-    storage: multer.memoryStorage()
-})
 
 app.use(bodyParser.urlencoded({extended: false}))
 app.use(express.json())
 //Routing for the app
-app.post('/:chat', chatController.getPrerendered)
-app.post('/chat/:with', chatController.post)
-app.get('/chats', chatController.getAll)
-app.post("/send/:to", upload.array('img', 10), msgController.postMsg)
+app.use(buildRoutes(socket))
 
 //Server startup
 const port = process.env.PORT

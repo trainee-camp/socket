@@ -9,6 +9,7 @@ import dbConnection from "./db.connection";
 import http from "http";
 import {setupMaster} from "@socket.io/sticky";
 import {setupPrimary} from "@socket.io/cluster-adapter";
+import express from "express";
 //Session configuration
 const client = connect({url: process.env.REDIS_URL})
 //Clusters
@@ -16,6 +17,8 @@ if (cluster.isMaster) {
     const numCPUs = require("os").cpus().length;
     console.log(`Master ${process.pid} is running`);
     const httpServer = http.createServer();
+    //Serve static data
+    app.use('/pics', express.static(String(process.env.PATH_TO_DATA)))
     // setup sticky sessions
     setupMaster(httpServer, {
         loadBalancingMethod: "least-connection",
