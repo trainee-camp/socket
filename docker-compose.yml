@@ -13,6 +13,8 @@ services:
       - "3000:3000"
       - "5432:5435"
       - "12459:12459"
+    volumes:
+      - '/usr/src/server/static'
   client:
     build: client/.
     environment:
