@@ -1,6 +1,7 @@
 import {createClient} from "redis";
 
-export function connect(connectionData: any) {
-    const client = createClient(connectionData)
-    return client
+export default function connect(connectionData: {
+    url: string
+}) {
+    return createClient(connectionData)
 }

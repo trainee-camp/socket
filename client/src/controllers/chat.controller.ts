@@ -10,8 +10,9 @@ export class ChatController {
 
     post = async (req: Request, res: Response) => {
         const to = req.params.with
-        this.socket.emit("send chat", to, process.env.NAME)
-        res.send("Sent chat invite")
+        const from = req.body.from
+        this.socket.emit("send chat", to, from)
+        return res.send("Sent chat invite")
     }
     getPrerendered = async (req: Request, res: Response) => {
         const chat = req.params.chat
@@ -21,8 +22,8 @@ export class ChatController {
             return res.status(200).send(await this.renderChat(chat))
         })
     }
-    getAll = async (_req: Request, res: Response) => {
-        this.socket.emit("get chats")
+    getAll = async (req: Request, res: Response) => {
+        this.socket.emit("get chats", req.body.user)
         this.socket.on("send chats", (chats) => {
             return res.status(200).json({chats})
         })

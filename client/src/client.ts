@@ -9,12 +9,16 @@ const express = require('express');
 
 const app = express()
 const httpServer = createServer(app)
-const socket = io(String(process.env.WS_SERVER_PORT), {autoConnect: false, reconnection: true})
+const socket = io(String(process.env.WS_SERVER_PORT), {autoConnect: true, reconnection: true})
 
 //Socket connections
+//BUG: occasionally : "CONNECT" fired on client but no connection on server when using clusters
 socket.on("connect", () => {
     console.log("Connected to server")
 })
+socket.on("connect_error", (err) => {
+    console.log(`connect_error due to ${err.message}`);
+});
 //Get a chat room invite notification
 socket.on("accept chat", (arg) => {
     console.log("Chat invite\n", arg)
@@ -36,6 +40,4 @@ app.use(buildRoutes(socket))
 const port = process.env.PORT
 httpServer.listen(port, () => {
     console.log("Listening on", port)
-    socket.auth = {username: process.env.NAME}
-    socket.connect()
 })

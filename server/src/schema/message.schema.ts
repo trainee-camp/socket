@@ -12,13 +12,13 @@ export class MessageSchema {
     @Column()
     sender: string
 
-    @Column("varchar",{nullable: true})
+    @Column("varchar", {nullable: true})
     text: string
 
-    @Column("varchar",{array:true , nullable: true})
+    @Column("varchar", {array: true, nullable: true})
     smallImg: string[]
 
-    @Column("varchar",{array:true, nullable: true})
+    @Column("varchar", {array: true, nullable: true})
     img: string[]
 
     @ManyToOne(() => ChatSchema, (chat) => chat.messages, {})

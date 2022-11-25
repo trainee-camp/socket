@@ -1,36 +1,42 @@
 import {MessageSchema} from "../schema/message.schema";
-import dbConnection from "../db.connection";
-import {Between} from "typeorm";
+import {Between, DataSource, Repository} from "typeorm";
 import {ChatSchema} from "../schema/chat.schema";
+import {Message_IF} from "../interfaces/message.if";
 
-const msgRepo = dbConnection.getRepository(MessageSchema)
-const chatRepo = dbConnection.getRepository(ChatSchema)
 
 export class MessageService {
-    post = async function (msg: any, chat: any) {
-        const cht = await chatRepo.findOne({
+    msgRepo: Repository<MessageSchema>
+    chatRepo: Repository<ChatSchema>
+
+    constructor(db: DataSource) {
+        this.msgRepo = db.getRepository(MessageSchema)
+        this.chatRepo = db.getRepository(ChatSchema)
+    }
+
+    async post(msg: Message_IF, chat: string) {
+        const cht = await this.chatRepo.findOne({
             where: {
                 id: chat
             }, relations: {
                 messages: true
             }
         })
-        //wtf why does it return an array ??
-        const message = msgRepo.create(msg)
+        const message = this.msgRepo.create(msg)
         if (!cht) {
             return;
         }
         cht.messages.push(<MessageSchema><unknown>message)
-        await chatRepo.save(cht)
+        await this.chatRepo.save(cht)
     }
+
     //gets a set slice of messages from the whole chat history
-    getSomeForChat = async (chat: string, opts: any) => {
+    async getSomeForChat(chat: string, opts: { date: string }) {
         const date = new Date(opts.date)
         const toDate = new Date(opts.date)
-        toDate.setUTCDate(date.getDate()+10)
-        const found = await msgRepo.find({
+        toDate.setUTCDate(date.getDate() + 10)
+        return await this.msgRepo.find({
             where: {
-                setAt: Between(date.toISOString().replace(/T.*/,''), toDate.toISOString().replace(/T.*/,'')),
+                setAt: Between(formatDate(date), formatDate(toDate)),
                 chat: {
                     id: chat
                 }
@@ -38,6 +44,9 @@ export class MessageService {
                 chat: true
             }
         })
-        return found
     }
+}
+
+function formatDate(date: Date) {
+    return date.toISOString().replace(/T.*/, '')
 }

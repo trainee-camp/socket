@@ -3,15 +3,18 @@ import path from "path";
 import {Server, Socket} from "socket.io";
 import {ChatService} from "../services/chat";
 import {MessageService} from "../services/message";
+import {Session_IF} from "../interfaces/session.if";
+import {DataSource} from "typeorm";
 
-export async function registerHandlers(io: Server, socket: Socket, session: any,) {
-    const chatService = new ChatService()
-    const msgService = new MessageService()
-    const sessionKey = socket.handshake.auth.username
-    await session.set(sessionKey, socket.id)
+export async function registerHandlers(io: Server, socket: Socket, session: Session_IF, db: DataSource) {
+    const chatService = new ChatService(db)
+    const msgService = new MessageService(db)
+    // const sessionKey = socket.handshake.auth.username
+    // if (sessionKey) {
+    //     await session.set(sessionKey, socket.id)
+    // }
     //Client requesting to create a chat room with another client
-    socket.on("send chat", async (receiver: any) => {
-        const sender = sessionKey
+    socket.on("send chat", async (receiver: string, sender: string) => {
         const chatId = await chatService.create(receiver, sender)
         if (!chatId) {
             return;
@@ -28,8 +31,7 @@ export async function registerHandlers(io: Server, socket: Socket, session: any,
         socket.emit("send chat", response)
     })
     //Get all chats for a user
-    socket.on("get chats", async () => {
-        const user = sessionKey
+    socket.on("get chats", async (user: string) => {
         const chats = await chatService.getAll(user)
         if (chats.length) {
             socket.emit("send chats", chats)
@@ -49,7 +51,7 @@ export async function registerHandlers(io: Server, socket: Socket, session: any,
                 }
             }))
             sockets.forEach(sock => {
-                if (socket.handshake.auth.username === sock.user) {
+                if (message.sender === sock.user) {
                     io.in(String(sock.id)).local.socketsJoin(room)
                 } else {
                     io.in(String(sock.id)).socketsJoin(room)

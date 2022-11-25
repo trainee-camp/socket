@@ -1,46 +1,28 @@
 import cluster from "cluster";
-import {connect} from './session.store'
+import connect from './session.store'
 
 require('dotenv').config()
 const app = require('express')()
-import {worker_start} from "./clusters/worker";
 //Db connect
-import dbConnection from "./db.connection";
-import http from "http";
-import {setupMaster} from "@socket.io/sticky";
-import {setupPrimary} from "@socket.io/cluster-adapter";
-import express from "express";
-//Session configuration
-const client = connect({url: process.env.REDIS_URL})
+import {RedisClientType} from "redis";
+import {Master} from "./clusters/master";
+import Connect from "./db.connection";
+import {Worker} from "./clusters/worker";
+
+const client = connect({url: String(process.env.REDIS_URL)});
 //Clusters
-if (cluster.isMaster) {
-    const numCPUs = require("os").cpus().length;
-    console.log(`Master ${process.pid} is running`);
-    const httpServer = http.createServer();
-    //Serve static data
-    app.use('/pics', express.static(String(process.env.PATH_TO_DATA)))
-    // setup sticky sessions
-    setupMaster(httpServer, {
-        loadBalancingMethod: "least-connection",
-    });
-    // setup connections between the workers
-    setupPrimary();
-    cluster.setupMaster();
-    //Server startup
-    const port = process.env.PORT
-    httpServer.listen(port)
-    //fork clusters
-    for (let i = 0; i < numCPUs / 2; i++) {
-        cluster.fork();
+(async function main() {
+    if (cluster.isMaster) {
+        console.log(`Master ${process.pid} is running`);
+        const master = new Master(app, Connect)
+        await master.start()
+    } else {
+        console.log(`Worker ${process.pid} started on ${process.env.PORT}`);
+        const worker = new Worker(app, Connect, client as RedisClientType)
+        await worker.start()
     }
-    cluster.on("exit", (worker) => {
-        console.log(`Worker ${worker.process.pid} died`);
-        cluster.fork();
-    });
-} else {
-    console.log(`Worker ${process.pid} started on ${process.env.PORT}`);
-    worker_start(app, client, dbConnection)
-}
+})()
+
 
 
 
