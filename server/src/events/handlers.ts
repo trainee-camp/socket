@@ -5,6 +5,8 @@ import {ChatService} from "../services/chat";
 import {MessageService} from "../services/message";
 import {Session_IF} from "../interfaces/session.if";
 import {DataSource} from "typeorm";
+import {Message_IF} from "../interfaces/message.if";
+import {File_If} from "../interfaces/file.if";
 
 export async function registerHandlers(io: Server, socket: Socket, session: Session_IF, db: DataSource) {
     const chatService = new ChatService(db)
@@ -26,7 +28,7 @@ export async function registerHandlers(io: Server, socket: Socket, session: Sess
         }
     })
     //Get chat and a first bunch of messages
-    socket.on("get chat", async (chat, opts) => {
+    socket.on("get chat", async (chat: string, opts) => {
         const response = await msgService.getSomeForChat(chat, opts)
         socket.emit("send chat", response)
     })
@@ -38,10 +40,9 @@ export async function registerHandlers(io: Server, socket: Socket, session: Sess
         }
     })
     //Client sending message to a room
-    socket.on("message", async (room: any, message: any) => {
+    socket.on("message", async (room: string, message: Message_IF) => {
         //Log message to db
         await msgService.post(message, room)
-        //Wait for file upload, save them to disk
         //Add users to the room if not already in (possible to send message to each sockets default room though, no real need to create one, but whatever)
         if (!socket.rooms.has(room)) {
             const users = await chatService.getUsers(room)
@@ -63,7 +64,7 @@ export async function registerHandlers(io: Server, socket: Socket, session: Sess
         io.to(room).emit("message", message)
     })
     //Client uploads images to server
-    socket.on("upload", async (file) => {
+    socket.on("upload", async (file: File_If) => {
         await fs.writeFile(path.join(String(process.env.PATH_TO_DATA), file.originalname), file.buffer)
     })
 }

@@ -6,6 +6,7 @@ import {buildRoutes} from "./router";
 
 require('dotenv').config()
 const express = require('express');
+import {NextFunction, Response, Request} from "express";
 
 const app = express()
 const httpServer = createServer(app)
@@ -35,6 +36,9 @@ app.use(bodyParser.urlencoded({extended: false}))
 app.use(express.json())
 //Routing for the app
 app.use(buildRoutes(socket))
+app.use((error: Error, _req: Request, res: Response, _next: NextFunction) => {
+    res.status(500).json({error: error?.message || error})
+})
 
 //Server startup
 const port = process.env.PORT

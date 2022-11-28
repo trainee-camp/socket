@@ -10,7 +10,7 @@ export class ChatController {
 
     post = async (req: Request, res: Response) => {
         const to = req.params.with
-        const from = req.body.from
+        const from = req.body.user
         this.socket.emit("send chat", to, from)
         return res.send("Sent chat invite")
     }
